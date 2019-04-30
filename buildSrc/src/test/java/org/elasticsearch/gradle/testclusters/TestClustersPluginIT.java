@@ -21,6 +21,7 @@ package org.elasticsearch.gradle.testclusters;
 import org.elasticsearch.gradle.test.GradleIntegrationTestCase;
 import org.gradle.testkit.runner.BuildResult;
 import org.gradle.testkit.runner.GradleRunner;
+import org.junit.Ignore;
 
 import java.util.Arrays;
 
@@ -76,11 +77,12 @@ public class TestClustersPluginIT extends GradleIntegrationTestCase {
         assertOutputContains(
             result.getOutput(),
             "> Task :user1",
-            "Starting `node{::myTestCluster}`",
-            "Stopping `node{::myTestCluster}`"
+            "Starting `node{::myTestCluster-1}`",
+            "Stopping `node{::myTestCluster-1}`"
         );
     }
 
+    @Ignore // https://github.com/elastic/elasticsearch/issues/41256
     public void testMultiProject() {
         BuildResult result = getTestClustersRunner(
             "user1", "user2", "-s", "-i", "--parallel", "-Dlocal.repo.path=" + getLocalTestRepoPath()
@@ -93,13 +95,13 @@ public class TestClustersPluginIT extends GradleIntegrationTestCase {
         assertStartedAndStoppedOnce(result);
         assertOutputOnlyOnce(
             result.getOutput(),
-            "Starting `node{:alpha:myTestCluster}`",
-            "Stopping `node{::myTestCluster}`"
+            "Starting `node{:alpha:myTestCluster-1}`",
+            "Stopping `node{::myTestCluster-1}`"
         );
         assertOutputOnlyOnce(
             result.getOutput(),
-            "Starting `node{::myTestCluster}`",
-            "Stopping `node{:bravo:myTestCluster}`"
+            "Starting `node{::myTestCluster-1}`",
+            "Stopping `node{:bravo:myTestCluster-1}`"
         );
     }
 
@@ -124,7 +126,7 @@ public class TestClustersPluginIT extends GradleIntegrationTestCase {
         assertStartedAndStoppedOnce(result);
         assertOutputContains(
             result.getOutput(),
-            "Stopping `node{::myTestCluster}`, tailLogs: true",
+            "Stopping `node{::myTestCluster-1}`, tailLogs: true",
             "Execution failed for task ':itAlwaysFails'."
         );
     }
@@ -136,7 +138,7 @@ public class TestClustersPluginIT extends GradleIntegrationTestCase {
         assertStartedAndStoppedOnce(result);
         assertOutputContains(
             result.getOutput(),
-            "Stopping `node{::myTestCluster}`, tailLogs: true",
+            "Stopping `node{::myTestCluster-1}`, tailLogs: true",
             "Execution failed for task ':itAlwaysFails'."
         );
     }
@@ -146,8 +148,17 @@ public class TestClustersPluginIT extends GradleIntegrationTestCase {
         assertTaskFailed(result, ":illegalConfigAlter");
         assertOutputContains(
             result.getOutput(),
-            "Configuration can not be altered, already locked"
+            "Configuration for node{::myTestCluster-1} can not be altered, already locked"
         );
+    }
+
+    @Ignore // https://github.com/elastic/elasticsearch/issues/41256
+    public void testMultiNode() {
+        BuildResult result = getTestClustersRunner(":multiNode").build();
+        assertTaskSuccessful(result, ":multiNode");
+        assertStartedAndStoppedOnce(result, "multiNode-1");
+        assertStartedAndStoppedOnce(result, "multiNode-2");
+        assertStartedAndStoppedOnce(result, "multiNode-3");
     }
 
     public void testPluginInstalled() {
@@ -177,12 +188,16 @@ public class TestClustersPluginIT extends GradleIntegrationTestCase {
             .withPluginClasspath();
     }
 
-    private void assertStartedAndStoppedOnce(BuildResult result) {
+    private void assertStartedAndStoppedOnce(BuildResult result, String nodeName) {
         assertOutputOnlyOnce(
             result.getOutput(),
-            "Starting `node{::myTestCluster}`",
-            "Stopping `node{::myTestCluster}`"
+            "Starting `node{::" + nodeName + "}`",
+            "Stopping `node{::" + nodeName + "}`"
         );
+    }
+
+    private void assertStartedAndStoppedOnce(BuildResult result) {
+        assertStartedAndStoppedOnce(result, "myTestCluster-1");
     }
 
 
